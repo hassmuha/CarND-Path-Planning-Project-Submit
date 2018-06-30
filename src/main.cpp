@@ -303,7 +303,7 @@ int main() {
               double check_car_distance = check_car_s - car_s;
               if (d<(2+4*lane+2) && d>(2+4*lane-2)) //check for the car in the same lane
               {
-                if ((check_car_s > car_s) && (check_car_distance > 15 && check_car_distance < 40) && (check_car_distance < front_car_distance))
+                if ((check_car_s > car_s) && (check_car_distance > 15 && check_car_distance < 30) && (check_car_distance < front_car_distance))
                 {
                   //Do some logic here, lower the reference velocity so we dont crash into the car infront of us,
                   //also flag to try to change the lanes
@@ -365,9 +365,9 @@ int main() {
               // this means we have approached a distance of 30 m so deaccelerate more
               //ref_vel += (-2.24/49.5)*ref_vel + 2.24;
               if (ref_vel > front_car_velocity) {
-                ref_vel -= (((1-8)/40)*front_car_distance + 8) * 2.24/50;
+                ref_vel -= (((3-8)/30)*front_car_distance + 8) * 2.24/50;
               } else {
-                ref_vel += (((1-8)/40)*front_car_distance + 8) * 2.24/50;
+                ref_vel += (((8-3)/30)*front_car_distance + 3) * 2.24/50;
               }
               // if (ref_vel > front_car_velocity) {
               //   ref_vel -= (((1-5)/25)*front_car_distance + 5) * 2.24/50;
