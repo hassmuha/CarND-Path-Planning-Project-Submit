@@ -262,26 +262,48 @@ int main() {
             // Initialization for making decision based on Sensor Fusion
             int front_car_state = 0; //1: means within 30m distance 2: means within 35m distance
             double front_car_velocity;
-            double front_car_distance;
+            double front_car_distance = 1e99;
+            int left_lane,right_lane;
+            bool left_lane_free = true;
+            bool right_lane_free = true;
+            bool lane_transition = true;
+            if (car_d<(2+4*lane+1) && car_d>(2+4*lane-1)){ //atleast it arrived to center of lane
+              lane_transition = false;
+            }
+            if (lane > 0) {
+              left_lane = lane - 1;
+            } else {
+              //there is no left lane as car is already in leftmost lane
+              left_lane = lane;
+              left_lane_free = false;
+            }
+            if (lane < 2) {
+              right_lane = lane + 1;
+            } else {
+              //there is no right lane as car is already in rightmost lane
+              right_lane = lane;
+              right_lane_free = false;
+            }
+
 
             for (int i=0; i< sensor_fusion.size();i++)
             {
               // car is in my lane
               float d = sensor_fusion[i][6];
-              if (d<(2+4*lane+2) && d>(2+4*lane-2))
+              double vx = sensor_fusion[i][3];
+              double vy = sensor_fusion[i][4];
+
+              double check_speed = sqrt(vx*vx+vy*vy);
+              double check_car_s = sensor_fusion[i][5];
+
+              //projecting the check_car s value to future so that we can compare with our last value of our projection
+              check_car_s += (double)prev_size*0.02*check_speed;
+
+              //cehck s values greater than mine and s highway_map
+              double check_car_distance = check_car_s - car_s;
+              if (d<(2+4*lane+2) && d>(2+4*lane-2)) //check for the car in the same lane
               {
-                double vx = sensor_fusion[i][3];
-                double vy = sensor_fusion[i][4];
-
-                double check_speed = sqrt(vx*vx+vy*vy);
-                double check_car_s = sensor_fusion[i][5];
-
-                //projecting the check_car s value to future so that we can compare with our last value of our projection
-                check_car_s += (double)prev_size*0.02*check_speed;
-
-                //cehck s values greater than mine and s highway_map
-                double check_car_distance = check_car_s - car_s;
-                if ((check_car_s > car_s) && (check_car_distance > 15 && check_car_distance < 30))
+                if ((check_car_s > car_s) && (check_car_distance > 15 && check_car_distance < 40) && (check_car_distance < front_car_distance))
                 {
                   //Do some logic here, lower the reference velocity so we dont crash into the car infront of us,
                   //also flag to try to change the lanes
@@ -295,29 +317,50 @@ int main() {
                   }*/
 
                 }
-                if ((check_car_s > car_s) && (check_car_distance <= 15))
+                else if ((check_car_s > car_s) && (check_car_distance <= 15) && (check_car_distance < front_car_distance))
                 {
                   front_car_state = 2;
                   front_car_distance = check_car_distance;
                   front_car_velocity = check_speed;
 
                 }
-                /*else if ((check_car_s > car_s) && (check_car_s - car_s) < 40)
-                {
-                  //Do some logic here, lower the reference velocity so we dont crash into the car infront of us,
-                  //also flag to try to change the lanes
-                  //ref_vel = 29.5;
-                  front_car_state = 2;
-                  front_car_velocity = check_speed;
-
-                }*/
 
 
               }
+              else if (d<(2+4*left_lane+2) && d>(2+4*left_lane-2)) //check for the car in the left lane
+              {
+                //put the car no only here
+                //two cars would be interested
+                //ideally after lane change there should be no car one after lane change within 40m
+                //there is no car from behind within 40
+                //store the nearest car location only
+                //+++++currently does not matter we just check whether or not we have car
+                if ((check_car_s > car_s) && (check_car_distance < 30))
+                {
+                  left_lane_free = false;
+                }
+                else if ((check_car_s < car_s) && (check_car_distance > -20))
+                {
+                  left_lane_free = false;
+                }
+
+              }
+              else if (d<(2+4*right_lane+2) && d>(2+4*right_lane-2)) //check for the car in the right lane
+              {
+                if ((check_car_s > car_s) && (check_car_distance < 30))
+                {
+                  right_lane_free = false;
+                }
+                else if ((check_car_s < car_s) && (check_car_distance > -20))
+                {
+                  right_lane_free = false;
+                }
+
+              }
+
 
             }
-
-            if (front_car_state == 1)
+            if (front_car_state == 1 && lane_transition == false)
             {
               // this means we have approached a distance of 30 m so deaccelerate more
               //ref_vel += (-2.24/49.5)*ref_vel + 2.24;
@@ -331,10 +374,30 @@ int main() {
               // } else {
               //   ref_vel += (((1-5)/25)*front_car_distance + 5) * 2.24/50;
               // }
+
+              if (left_lane_free) //left lane change has priority
+              {
+                lane = left_lane;
+                lane_transition = true;
+              } else if (right_lane_free)
+              {
+                lane = right_lane;
+                lane_transition = true;
+              }
             }
-            else if (front_car_state == 2)
+            else if (front_car_state == 2 && lane_transition == false)
             {
               ref_vel -= .3584;
+
+              if (left_lane_free) //left lane change has priority
+              {
+                lane = left_lane;
+                lane_transition = true;
+              } else if (right_lane_free)
+              {
+                lane = right_lane;
+                lane_transition = true;
+              }
             }
             else if (ref_vel < 49.5)
             {
