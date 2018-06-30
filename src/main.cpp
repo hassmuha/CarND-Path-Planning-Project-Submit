@@ -206,7 +206,7 @@ int main() {
   int lane = 1;
 
   // Have a reference velocity to target
-  double ref_vel = 2.24; //MPH
+  double ref_vel = 3.584; //MPH
 
   h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy,&lane,&ref_vel](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -259,7 +259,10 @@ int main() {
               car_s = end_path_s; //we are going to compare neighbour cars with this value instead of car current s
             }
 
-            bool too_close = false;
+            // Initialization for making decision based on Sensor Fusion
+            int front_car_state = 0; //1: means within 30m distance 2: means within 35m distance
+            double front_car_velocity;
+            double front_car_distance;
 
             for (int i=0; i< sensor_fusion.size();i++)
             {
@@ -277,31 +280,66 @@ int main() {
                 check_car_s += (double)prev_size*0.02*check_speed;
 
                 //cehck s values greater than mine and s highway_map
-                if ((check_car_s > car_s) && (check_car_s - car_s) < 30)
+                double check_car_distance = check_car_s - car_s;
+                if ((check_car_s > car_s) && (check_car_distance > 15 && check_car_distance < 30))
                 {
                   //Do some logic here, lower the reference velocity so we dont crash into the car infront of us,
                   //also flag to try to change the lanes
                   //ref_vel = 29.5;
-                  too_close = true;
-                  if (lane>0)
+                  front_car_state = 1;
+                  front_car_distance = check_car_distance;
+                  front_car_velocity = check_speed;
+                  /*if (lane>0)
                   {
                     lane = 0;
-                  }
+                  }*/
 
                 }
+                if ((check_car_s > car_s) && (check_car_distance <= 15))
+                {
+                  front_car_state = 2;
+                  front_car_distance = check_car_distance;
+                  front_car_velocity = check_speed;
+
+                }
+                /*else if ((check_car_s > car_s) && (check_car_s - car_s) < 40)
+                {
+                  //Do some logic here, lower the reference velocity so we dont crash into the car infront of us,
+                  //also flag to try to change the lanes
+                  //ref_vel = 29.5;
+                  front_car_state = 2;
+                  front_car_velocity = check_speed;
+
+                }*/
 
 
               }
 
             }
 
-            if (too_close)
+            if (front_car_state == 1)
             {
-              ref_vel -= .3584; //refer to 8m/s2 deacceleration in .02s => 8*2.24/50 = .3584
+              // this means we have approached a distance of 30 m so deaccelerate more
+              //ref_vel += (-2.24/49.5)*ref_vel + 2.24;
+              if (ref_vel > front_car_velocity) {
+                ref_vel -= (((1-8)/40)*front_car_distance + 8) * 2.24/50;
+              } else {
+                ref_vel += (((1-8)/40)*front_car_distance + 8) * 2.24/50;
+              }
+              // if (ref_vel > front_car_velocity) {
+              //   ref_vel -= (((1-5)/25)*front_car_distance + 5) * 2.24/50;
+              // } else {
+              //   ref_vel += (((1-5)/25)*front_car_distance + 5) * 2.24/50;
+              // }
+            }
+            else if (front_car_state == 2)
+            {
+              ref_vel -= .3584;
             }
             else if (ref_vel < 49.5)
             {
               ref_vel += .3584;
+              //ref_vel += .1*2.24;
             }
             //list of widespaced waypoints to be used by spline to create more points
             vector<double> ptsx;
