@@ -7,11 +7,11 @@ Self-Driving Car Engineer Nanodegree Program
 * Rubic point are discussed below
 ---
 # Compilation
-* The code compiles correctly.
+## The code compiles correctly.
 Code has been compiled succesfully and compiled code is also uploaded in the repository
 ---
 # Valid Trajectories
-* The car is able to drive at least 4.32 miles without incident..
+## The car is able to drive at least 4.32 miles without incident..
 
 - Respect the speed limit of 50MPH
 
@@ -29,16 +29,16 @@ When there is car infront perform two steps
 
 - Use of spline for trajectory generation
 
-* The car drives according to the speed limit.
+## The car drives according to the speed limit.
 The portion of code which helps to maintain the speed limit is main.cpp:line393-397
 
-* Max Acceleration and Jerk are not Exceeded.
+## Max Acceleration and Jerk are not Exceeded.
 The portion of code which helps to maintain the speed limit is main.cpp:line361,364,381,396
 
-* Car does not have collisions.
+## Car does not have collisions.
 This is achieved by start following the front car speed when the distance is within 30 down to 15. Below 15 deaccelerate maximum of 8m/s2. The portion of code can where this is checked is main.cpp:line309-322 and main.cpp:line355-392
-* The car stays in its lane, except for the time between changing lanes.
+## The car stays in its lane, except for the time between changing lanes.
 Simple code logic used for trajectory generation based on the waypoints selected at a distance of 30,60,90m away from car current freenet s-coordinate position and also include the some of previous generated trajectory points. This not only give smoothness but also keep the car in the lane.
 
-* The car is able to change lanes
+## The car is able to change lanes
 As explained earlier car is able to change the lanes.
