@@ -204,7 +204,6 @@ int main() {
 
   // start in lane 1
   int lane = 1;
-
   // Have a reference velocity to target
   double ref_vel = 3.584; //MPH
 
@@ -260,16 +259,19 @@ int main() {
             }
 
             // Initialization for making decision based on Sensor Fusion
-            int front_car_state = 0; //1: means within 30m distance 2: means within 35m distance
+            int front_car_state = 0; //1: means within 15-30m distance 2: means within 15m distance
             double front_car_velocity;
             double front_car_distance = 1e99;
             int left_lane,right_lane;
-            bool left_lane_free = true;
-            bool right_lane_free = true;
-            bool lane_transition = true;
-            if (car_d<(2+4*lane+1) && car_d>(2+4*lane-1)){ //atleast it arrived to center of lane
+            bool left_lane_free = true; //flag to check whether the left lane is free for transition
+            bool right_lane_free = true; //flag to check whether the right lane is free for transition
+            bool lane_transition = true; //flag to state whether the lane changed has been performed
+
+            //Check whether or not car has arrived at the center of the lane
+            if (car_d<(2+4*lane+1) && car_d>(2+4*lane-1)){
               lane_transition = false;
             }
+            // check for left lane if exists
             if (lane > 0) {
               left_lane = lane - 1;
             } else {
@@ -277,6 +279,7 @@ int main() {
               left_lane = lane;
               left_lane_free = false;
             }
+            // check for right lane if exists
             if (lane < 2) {
               right_lane = lane + 1;
             } else {
@@ -305,36 +308,23 @@ int main() {
               {
                 if ((check_car_s > car_s) && (check_car_distance > 15 && check_car_distance < 30) && (check_car_distance < front_car_distance))
                 {
-                  //Do some logic here, lower the reference velocity so we dont crash into the car infront of us,
-                  //also flag to try to change the lanes
-                  //ref_vel = 29.5;
+                  //Indicates that the car is infront of us within a s distance of 15m to 30m
                   front_car_state = 1;
                   front_car_distance = check_car_distance;
                   front_car_velocity = check_speed;
-                  /*if (lane>0)
-                  {
-                    lane = 0;
-                  }*/
-
                 }
                 else if ((check_car_s > car_s) && (check_car_distance <= 15) && (check_car_distance < front_car_distance))
                 {
+                  //Indicates that the car is infront of us within a distance of less than 15m
                   front_car_state = 2;
                   front_car_distance = check_car_distance;
                   front_car_velocity = check_speed;
-
                 }
-
-
               }
               else if (d<(2+4*left_lane+2) && d>(2+4*left_lane-2)) //check for the car in the left lane
               {
-                //put the car no only here
-                //two cars would be interested
-                //ideally after lane change there should be no car one after lane change within 40m
-                //there is no car from behind within 40
-                //store the nearest car location only
-                //+++++currently does not matter we just check whether or not we have car
+                //Indicates whether the left lane is available for lane change
+                //ideally after lane change there should be no car within 30m infont of us and 20m behind us
                 if ((check_car_s > car_s) && (check_car_distance < 30))
                 {
                   left_lane_free = false;
@@ -347,6 +337,8 @@ int main() {
               }
               else if (d<(2+4*right_lane+2) && d>(2+4*right_lane-2)) //check for the car in the right lane
               {
+                //Indicates whether the right lane is available for lane change
+                //ideally after lane change there should be no car within 30m infont of us and 20m behind us
                 if ((check_car_s > car_s) && (check_car_distance < 30))
                 {
                   right_lane_free = false;
@@ -357,24 +349,21 @@ int main() {
                 }
 
               }
-
-
             }
+
+
             if (front_car_state == 1 && lane_transition == false)
             {
-              // this means we have approached a distance of 30 m so deaccelerate more
-              //ref_vel += (-2.24/49.5)*ref_vel + 2.24;
+              //Car is infront of us so try to start following the front car car perform 2 steps if possible
+              //1) Try to follow the speed of front car
               if (ref_vel > front_car_velocity) {
+                // if front car speed is less than the car speed deaccelerate in propotional to front car distance with min value of 3m/s2 and maximum value of 8m/s2
                 ref_vel -= (((3-8)/30)*front_car_distance + 8) * 2.24/50;
               } else {
+                // f front car speed is greater than the car speed accelerate in propotional to front car distance with min value of 3m/s2 and maximum value of 8m/s2
                 ref_vel += (((8-3)/30)*front_car_distance + 3) * 2.24/50;
               }
-              // if (ref_vel > front_car_velocity) {
-              //   ref_vel -= (((1-5)/25)*front_car_distance + 5) * 2.24/50;
-              // } else {
-              //   ref_vel += (((1-5)/25)*front_car_distance + 5) * 2.24/50;
-              // }
-
+              //2) If lane change is allowed signal the lane change process
               if (left_lane_free) //left lane change has priority
               {
                 lane = left_lane;
@@ -387,8 +376,10 @@ int main() {
             }
             else if (front_car_state == 2 && lane_transition == false)
             {
-              ref_vel -= .3584;
-
+              //Car is infront of us with the distanc of less than 15m so
+              //1) deaccelerate 8m/s2
+              ref_vel -= (8 * 2.24/50);
+              //2) If lane change is allowed signal the lane change process
               if (left_lane_free) //left lane change has priority
               {
                 lane = left_lane;
@@ -401,8 +392,8 @@ int main() {
             }
             else if (ref_vel < 49.5)
             {
-              ref_vel += .3584;
-              //ref_vel += .1*2.24;
+              //try to follow the maximum speed limit
+              ref_vel += (8 * 2.24/50);
             }
             //list of widespaced waypoints to be used by spline to create more points
             vector<double> ptsx;
